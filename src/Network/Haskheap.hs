@@ -63,8 +63,9 @@ refheapReq method path query body = do
           Nothing -> req'
     responseBody <$> withManager (httpLbs req'')
 
-getPaste :: String -> Maybe SimpleQuery -> IO Paste
-getPaste id auth = do
-  s <- refheapReq methodGet ("/paste/" ++ id) auth Nothing
+-- | Get a paste from refheap.
+getPaste :: String -> IO Paste
+getPaste id = do
+  s <- refheapReq methodGet ("/paste/" ++ id) Nothing Nothing
   let (Just p) = decodePaste s
   return p
