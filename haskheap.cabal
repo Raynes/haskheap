@@ -6,7 +6,7 @@ version:             0.1.0
 synopsis:            Haskell bindings to refheap.
 -- description:         
 homepage:            https://github.com/Raynes/haskheap
-license:             MITy
+license:             MIT
 license-file:        LICENSE
 author:              Anthony Grimes
 maintainer:          i@raynes.me
