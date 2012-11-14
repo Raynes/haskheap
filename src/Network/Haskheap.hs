@@ -57,15 +57,14 @@ refheapReq method path query body = do
     Just s  -> url ++ SB.unpack s
     Nothing -> url
   withSocketsDo $ do
-    let req'  = req { method = method }
+    let req'  = req { method = method, checkStatus = \_ _ -> Nothing }
         req'' = case body of
           Just b  -> urlEncodedBody b req'
           Nothing -> req'
     responseBody <$> withManager (httpLbs req'')
 
--- | Get a paste from refheap.
-getPaste :: String -> IO Paste
+-- | Get a paste from refheap. Will return IO Nothing if the paste doesn't exist.
+getPaste :: String -> IO (Maybe Paste)
 getPaste id = do
   s <- refheapReq methodGet ("/paste/" ++ id) Nothing Nothing
-  let (Just p) = decodePaste s
-  return p
+  return $ decodePaste s
