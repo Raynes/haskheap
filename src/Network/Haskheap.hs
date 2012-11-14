@@ -13,7 +13,7 @@ import Data.Time.Format     (parseTime)
 import Data.Time.Clock      (UTCTime)
 import System.Locale        (defaultTimeLocale)
 import Network.URI          (URI, parseURI)
-import Data.Aeson           ((.:), (.:?), decode, FromJSON(..), Value(..))
+import Data.Aeson           ((.:), (.:?), (.!=), decode, FromJSON(..), Value(..))
 import Network.HTTP.Conduit
 import Network.HTTP.Types   (renderSimpleQuery, SimpleQuery, Method, methodGet, methodPost, methodDelete)
 import Network              (withSocketsDo)
@@ -46,6 +46,11 @@ data Paste = Paste { getLines    :: Integer
                    , getBody     :: Contents
                    } deriving (Show)
 
+data Error = Error String deriving (Show)
+
+instance FromJSON Error where
+  parseJSON (Object v) = Error <$> (v .: "error")
+
 instance FromJSON Paste where
   parseJSON (Object v) =
     Paste <$>
@@ -75,26 +80,36 @@ refheapReq method path query body = do
           Nothing -> req'
     responseBody <$> withManager (httpLbs req'')
 
+decodePaste :: B.ByteString -> Either (Maybe Error) Paste
+decodePaste s =
+  case decode s of
+    (Just x) -> Right x
+    Nothing  -> Left $ decode s
+
 -- | Get a paste from refheap. Will return IO Nothing if the paste doesn't exist.
-getPaste :: PasteID -> IO (Maybe Paste)
+getPaste :: PasteID -> IO (Either (Maybe Error) Paste)
 getPaste id =
   refheapReq methodGet ("/paste/" ++ id) Nothing Nothing >>=
-  return . decode
+  return . decodePaste
 
 -- | Create a new paste.
-createPaste :: Contents -> Bool -> Language -> Maybe Auth -> IO (Maybe Paste)
+createPaste :: Contents -> Bool -> Language -> Maybe Auth -> IO (Either (Maybe Error) Paste)
 createPaste body private language auth =
   refheapReq methodPost "/paste" (composeAuth <$> auth) form >>=
-  return . decode
+  return . decodePaste
   where form = Just [("contents", body)
                     ,("private", show private)
                     ,("language", language)]
 
 -- | Delete a paste. If it fails for some reason, will return
 -- the error message from refheap's API wrapped in Maybe, otherwise Nothing.
-deletePaste :: PasteID -> Auth -> IO (Maybe String)
-deletePaste id auth = do
-  s <- refheapReq methodDelete ("/paste/" ++ id) (Just $ composeAuth auth) Nothing
-  return $ if B.null s
-           then Nothing
-           else Just $ B.unpack s
+deletePaste :: PasteID -> Auth -> IO (Either (Maybe Error) Paste)
+deletePaste id auth =
+  refheapReq methodDelete ("/paste/" ++ id) (Just $ composeAuth auth) Nothing >>=
+  return . decodePaste
+
+-- | Fork a paste.
+forkPaste :: PasteID -> Auth -> IO (Either (Maybe Error) Paste) 
+forkPaste id auth =
+  refheapReq methodPost ("/paste/" ++ id ++ "/fork") (Just $ composeAuth auth) Nothing >>=
+  return . decodePaste
