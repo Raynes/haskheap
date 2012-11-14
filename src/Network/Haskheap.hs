@@ -2,6 +2,8 @@
 module Network.Haskheap
        ( Paste(..)
        , getPaste
+       , createPaste
+       , deletePaste
        )
 where
 
@@ -13,7 +15,7 @@ import System.Locale        (defaultTimeLocale)
 import Network.URI          (URI, parseURI)
 import Data.Aeson           ((.:), (.:?), decode, FromJSON(..), Value(..))
 import Network.HTTP.Conduit
-import Network.HTTP.Types   (renderSimpleQuery, SimpleQuery, Method, methodGet, methodPost)
+import Network.HTTP.Types   (renderSimpleQuery, SimpleQuery, Method, methodGet, methodPost, methodDelete)
 import Network              (withSocketsDo)
 import Control.Arrow        ((***))
 import qualified Data.ByteString.Lazy.Char8 as B
@@ -88,3 +90,11 @@ createPaste body private language auth =
                     ,("private", show private)
                     ,("language", language)]
 
+-- | Delete a paste. If it fails for some reason, will return
+-- the error message from refheap's API wrapped in Maybe, otherwise Nothing.
+deletePaste :: PasteID -> Auth -> IO (Maybe String)
+deletePaste id auth = do
+  s <- refheapReq methodDelete ("/paste/" ++ id) (Just $ composeAuth auth) Nothing
+  return $ if B.null s
+           then Nothing
+           else Just $ B.unpack s
