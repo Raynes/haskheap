@@ -5,17 +5,17 @@ module Network.Haskheap
        )
 where
 
-import Control.Applicative ((<*>), (<$>))
-import Control.Monad       (liftM)
-import Data.Time.Format    (parseTime)
-import Data.Time.Clock     (UTCTime)
-import System.Locale       (defaultTimeLocale)
-import Network.URI         (URI, parseURI)
-import Data.Aeson          ((.:), (.:?), decode, FromJSON(..), Value(..))
+import Control.Applicative  ((<*>), (<$>))
+import Control.Monad        (liftM)
+import Data.Time.Format     (parseTime)
+import Data.Time.Clock      (UTCTime)
+import System.Locale        (defaultTimeLocale)
+import Network.URI          (URI, parseURI)
+import Data.Aeson           ((.:), (.:?), decode, FromJSON(..), Value(..))
 import Network.HTTP.Conduit
-import Network.HTTP.Types (renderSimpleQuery, SimpleQuery, Method, methodGet, methodPost)
-import Network (withSocketsDo)
-import Control.Arrow ((***))
+import Network.HTTP.Types   (renderSimpleQuery, SimpleQuery, Method, methodGet, methodPost)
+import Network              (withSocketsDo)
+import Control.Arrow        ((***))
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as SB
 
