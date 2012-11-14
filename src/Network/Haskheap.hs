@@ -4,6 +4,7 @@ module Network.Haskheap
        , getPaste
        , createPaste
        , deletePaste
+       , forkPaste
        )
 where
 
@@ -55,11 +56,11 @@ instance FromJSON Paste where
   parseJSON (Object v) =
     Paste <$>
     (v .: "lines")                    <*>
-    (liftM parseRHTime (v .: "date")) <*>
+    liftM parseRHTime (v .: "date")   <*>
     (v .: "paste-id")                 <*>
     (v .: "language")                 <*>
     (v .: "private")                  <*>
-    (liftM parseURI (v .: "url"))     <*>
+    liftM parseURI (v .: "url")       <*>
     (v .:? "user")                    <*>
     (v .: "contents")
 
@@ -89,14 +90,12 @@ decodePaste s =
 -- | Get a paste from refheap. Will return IO Nothing if the paste doesn't exist.
 getPaste :: PasteID -> IO (Either (Maybe Error) Paste)
 getPaste id =
-  refheapReq methodGet ("/paste/" ++ id) Nothing Nothing >>=
-  return . decodePaste
+  liftM decodePaste $ refheapReq methodGet ("/paste/" ++ id) Nothing Nothing
 
 -- | Create a new paste.
 createPaste :: Contents -> Bool -> Language -> Maybe Auth -> IO (Either (Maybe Error) Paste)
 createPaste body private language auth =
-  refheapReq methodPost "/paste" (composeAuth <$> auth) form >>=
-  return . decodePaste
+  liftM decodePaste $ refheapReq methodPost "/paste" (composeAuth <$> auth) form
   where form = Just [("contents", body)
                     ,("private", show private)
                     ,("language", language)]
@@ -105,11 +104,11 @@ createPaste body private language auth =
 -- the error message from refheap's API wrapped in Maybe, otherwise Nothing.
 deletePaste :: PasteID -> Auth -> IO (Either (Maybe Error) Paste)
 deletePaste id auth =
-  refheapReq methodDelete ("/paste/" ++ id) (Just $ composeAuth auth) Nothing >>=
-  return . decodePaste
+  liftM decodePaste $
+  refheapReq methodDelete ("/paste/" ++ id) (Just $ composeAuth auth) Nothing
 
 -- | Fork a paste.
 forkPaste :: PasteID -> Auth -> IO (Either (Maybe Error) Paste) 
 forkPaste id auth =
-  refheapReq methodPost ("/paste/" ++ id ++ "/fork") (Just $ composeAuth auth) Nothing >>=
-  return . decodePaste
+  liftM decodePaste $
+  refheapReq methodPost ("/paste/" ++ id ++ "/fork") (Just $ composeAuth auth) Nothing
