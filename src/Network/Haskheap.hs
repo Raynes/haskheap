@@ -29,7 +29,7 @@ type Query    = [(String, String)]
 type Auth     = (String, String)
 
 packQuery :: Query -> SimpleQuery
-packQuery = map (SB.pack *** SB.pack)
+packQuery = map $ SB.pack *** SB.pack
 
 composeAuth :: Auth -> Query
 composeAuth (user, token) = [("username", user), ("token", token)]
