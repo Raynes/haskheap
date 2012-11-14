@@ -56,9 +56,6 @@ instance FromJSON Paste where
     (v .:? "user")                    <*>
     (v .: "contents")
 
-decodePaste :: B.ByteString -> Maybe Paste
-decodePaste s = decode s
-
 refheap :: String
 refheap = "https://www.refheap.com/api"
 
@@ -80,11 +77,12 @@ refheapReq method path query body = do
 getPaste :: PasteID -> IO (Maybe Paste)
 getPaste id = do
   s <- refheapReq methodGet ("/paste/" ++ id) Nothing Nothing
-  return $ decodePaste s
+  return $ decode s
 
 createPaste :: Contents -> Bool -> Language -> Maybe Auth -> IO (Maybe Paste)
 createPaste body private language auth = do
   s <- refheapReq methodPost "/paste" (composeAuth <$> auth) (Just [("contents", body)
                                                                    ,("private", show private)
                                                                    ,("language", language)])
-  return $ decodePaste s
+  return $ decode s
+
