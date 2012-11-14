@@ -75,14 +75,16 @@ refheapReq method path query body = do
 
 -- | Get a paste from refheap. Will return IO Nothing if the paste doesn't exist.
 getPaste :: PasteID -> IO (Maybe Paste)
-getPaste id = do
-  s <- refheapReq methodGet ("/paste/" ++ id) Nothing Nothing
-  return $ decode s
+getPaste id =
+  refheapReq methodGet ("/paste/" ++ id) Nothing Nothing >>=
+  return . decode
 
+-- | Create a new paste.
 createPaste :: Contents -> Bool -> Language -> Maybe Auth -> IO (Maybe Paste)
-createPaste body private language auth = do
-  s <- refheapReq methodPost "/paste" (composeAuth <$> auth) (Just [("contents", body)
-                                                                   ,("private", show private)
-                                                                   ,("language", language)])
-  return $ decode s
+createPaste body private language auth =
+  refheapReq methodPost "/paste" (composeAuth <$> auth) form >>=
+  return . decode
+  where form = Just [("contents", body)
+                    ,("private", show private)
+                    ,("language", language)]
 
