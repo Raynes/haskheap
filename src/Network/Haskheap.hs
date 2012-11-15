@@ -16,7 +16,7 @@ import Data.Time.Clock      (UTCTime)
 import System.Locale        (defaultTimeLocale)
 import Network.URI          (URI, parseURI)
 import Data.Aeson           ((.:), (.:?), (.!=), decode, FromJSON(..), Value(..))
-import Network.HTTP.Conduit
+import Network.HTTP.Conduit (parseUrl, urlEncodedBody, Response(..), Request(..), withManager, httpLbs) 
 import Network.HTTP.Types   (renderSimpleQuery, SimpleQuery, Method, methodGet, methodPost, methodDelete)
 import Network              (withSocketsDo)
 import Control.Arrow        ((***))
