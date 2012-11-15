@@ -45,16 +45,16 @@ composeAuth :: Auth -> Query
 composeAuth (user, token) = [("username", user), ("token", token)]
 
 -- | Result of as successful request (either empty or a paste).
-data Success = Paste { getLines    :: Integer
-                     , getDate     :: Maybe UTCTime
-                     , getID       :: PasteID
-                     , getLanguage :: Language
-                     , getPrivate  :: Bool
-                     , getURL      :: Maybe URI
-                     , getUser     :: Maybe String
-                     , getBody     :: Contents
+data Success = Paste { getLines    :: Integer       -- ^ Lines in the paste.
+                     , getDate     :: Maybe UTCTime -- ^ Time the paste was created.
+                     , getID       :: PasteID       -- ^ ID of the paste (may be numeric or hash or sorts).
+                     , getLanguage :: Language      -- ^ The language of the paste.
+                     , getPrivate  :: Bool          -- ^ Whether or not the paste is Private. True is yes.
+                     , getURL      :: Maybe URI     -- ^ URL of the paste.
+                     , getUser     :: Maybe String  -- ^ User who created the paste. Nothing indicates anonymous.
+                     , getBody     :: Contents      -- ^ Body of the paste.
                      }
-             | Empty
+             | Empty -- ^ Operation was successful, but response is empty.
              deriving (Show)
 
 -- | A simple error box so I can parse refheap error messages into something useful.
