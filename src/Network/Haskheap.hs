@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- | A library for interfacing with the refheap (https://www.refheap.com) API.
 module Network.Haskheap
-       ( Paste(..)
+       ( Success(..)
        , getPaste
        , createPaste
        , deletePaste
@@ -44,16 +44,18 @@ packQuery = map $ SB.pack *** SB.pack
 composeAuth :: Auth -> Query
 composeAuth (user, token) = [("username", user), ("token", token)]
 
--- | Paste type containing all information of a refheap paste.
-data Paste = Paste { getLines    :: Integer
-                   , getDate     :: Maybe UTCTime
-                   , getID       :: PasteID
-                   , getLanguage :: Language
-                   , getPrivate  :: Bool
-                   , getURL      :: Maybe URI
-                   , getUser     :: Maybe String
-                   , getBody     :: Contents
-                   } deriving (Show)
+-- | Result of as successful request (either empty or a paste).
+data Success = Paste { getLines    :: Integer
+                     , getDate     :: Maybe UTCTime
+                     , getID       :: PasteID
+                     , getLanguage :: Language
+                     , getPrivate  :: Bool
+                     , getURL      :: Maybe URI
+                     , getUser     :: Maybe String
+                     , getBody     :: Contents
+                     }
+             | Empty
+             deriving (Show)
 
 -- | A simple error box so I can parse refheap error messages into something useful.
 data Error = Error String deriving (Show)
@@ -61,7 +63,7 @@ data Error = Error String deriving (Show)
 instance FromJSON Error where
   parseJSON (Object v) = Error <$> (v .: "error")
   
-instance FromJSON Paste where
+instance FromJSON Success where
   parseJSON (Object v) =
     Paste <$>
     (v .: "lines")                    <*>
@@ -99,21 +101,22 @@ refheapReq method path query body = do
 
 -- | Decode a paste to either a Maybe Error or a Paste. It works by first
 -- trying to decode the JSON as a Paste and if that fails, it tries to decode
--- it as an Error. It is wrapped in Maybe because there may or may not be an
--- error message.
-decodePaste :: B.ByteString -> Either (Maybe Error) Paste
+-- it as an Error.
+decodePaste :: B.ByteString -> Either Error Success
 decodePaste s =
   case decode s of
     (Just x) -> Right x
-    Nothing  -> Left $ decode s
+    Nothing  -> case decode s of
+      (Just x) -> Left x
+      Nothing  -> Right Empty
 
 -- | Get a paste from refheap. Will return IO Nothing if the paste doesn't exist.
-getPaste :: PasteID -> IO (Either (Maybe Error) Paste)
+getPaste :: PasteID -> IO (Either Error Success)
 getPaste id =
   liftM decodePaste $ refheapReq methodGet ("/paste/" ++ id) Nothing Nothing
 
 -- | Create a new paste.
-createPaste :: Contents -> Bool -> Language -> Maybe Auth -> IO (Either (Maybe Error) Paste)
+createPaste :: Contents -> Bool -> Language -> Maybe Auth -> IO (Either Error Success)
 createPaste body private language auth =
   liftM decodePaste $ refheapReq methodPost "/paste" (composeAuth <$> auth) form
   where form = Just [("contents", body)
@@ -122,13 +125,13 @@ createPaste body private language auth =
 
 -- | Delete a paste. If it fails for some reason, will return
 -- the error message from refheap's API wrapped in Maybe, otherwise Nothing.
-deletePaste :: PasteID -> Auth -> IO (Either (Maybe Error) Paste)
+deletePaste :: PasteID -> Auth -> IO (Either Error Success)
 deletePaste id auth =
   liftM decodePaste $
   refheapReq methodDelete ("/paste/" ++ id) (Just $ composeAuth auth) Nothing
 
 -- | Fork a paste.
-forkPaste :: PasteID -> Auth -> IO (Either (Maybe Error) Paste) 
+forkPaste :: PasteID -> Auth -> IO (Either Error Success) 
 forkPaste id auth =
   liftM decodePaste $
   refheapReq methodPost ("/paste/" ++ id ++ "/fork") (Just $ composeAuth auth) Nothing
