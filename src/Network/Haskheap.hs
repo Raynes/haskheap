@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- | A library for interfacing with the refheap (https://www.refheap.com) API.
 module Network.Haskheap
        ( Paste(..)
        , getPaste
@@ -22,8 +23,11 @@ import Control.Arrow        ((***))
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as SB
 
+-- | Parse UTC time from the time string provided by refheap.
 parseRHTime :: String -> Maybe UTCTime
 parseRHTime = parseTime defaultTimeLocale "%FT%X%QZ"
+
+-- Various type synonyms to make it clearer what they're used for in context
 
 type PasteID  = String
 type Language = String
@@ -31,12 +35,16 @@ type Contents = String
 type Query    = [(String, String)]
 type Auth     = (String, String)
 
+-- | Turns a list of 2 element String tuples and packs the strings into bytestrings.
 packQuery :: Query -> SimpleQuery
 packQuery = map $ SB.pack *** SB.pack
 
+-- | Takes a 2 tuple of strings and returns a query with username and token assigned
+-- to the strings.
 composeAuth :: Auth -> Query
 composeAuth (user, token) = [("username", user), ("token", token)]
 
+-- | Paste type containing all information of a refheap paste.
 data Paste = Paste { getLines    :: Integer
                    , getDate     :: Maybe UTCTime
                    , getID       :: PasteID
@@ -47,11 +55,12 @@ data Paste = Paste { getLines    :: Integer
                    , getBody     :: Contents
                    } deriving (Show)
 
+-- | A simple error box so I can parse refheap error messages into something useful.
 data Error = Error String deriving (Show)
 
 instance FromJSON Error where
   parseJSON (Object v) = Error <$> (v .: "error")
-
+  
 instance FromJSON Paste where
   parseJSON (Object v) =
     Paste <$>
@@ -67,7 +76,14 @@ instance FromJSON Paste where
 refheap :: String
 refheap = "https://www.refheap.com/api"
 
-refheapReq :: Method -> String -> Maybe Query -> Maybe Query -> IO B.ByteString
+-- | A convenience method for sending a request to refheap and getting the body.
+-- This function could (and likely should) be made more general and put in a
+-- separate library.
+refheapReq :: Method          -- ^ The request method.
+           -> String          -- ^ Path to append to the refheap API url.
+           -> Maybe Query     -- ^ Query parameters.
+           -> Maybe Query     -- ^ Form parameters.
+           -> IO B.ByteString -- ^ The body of the response of the request.
 refheapReq method path query body = do
   let queryStr = renderSimpleQuery True . packQuery <$> query
       url      = refheap ++ path
@@ -81,6 +97,10 @@ refheapReq method path query body = do
           Nothing -> req'
     responseBody <$> withManager (httpLbs req'')
 
+-- | Decode a paste to either a Maybe Error or a Paste. It works by first
+-- trying to decode the JSON as a Paste and if that fails, it tries to decode
+-- it as an Error. It is wrapped in Maybe because there may or may not be an
+-- error message.
 decodePaste :: B.ByteString -> Either (Maybe Error) Paste
 decodePaste s =
   case decode s of
