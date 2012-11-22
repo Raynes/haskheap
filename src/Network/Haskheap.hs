@@ -135,3 +135,11 @@ forkPaste :: PasteID -> Auth -> IO (Either Error Success)
 forkPaste id auth =
   liftM decodePaste $
   refheapReq methodPost ("/paste/" ++ id ++ "/fork") (Just $ composeAuth auth) Nothing
+
+-- | Edit a paste.
+editPaste :: PasteID -> Contents -> Bool -> Language -> Auth -> IO (Either Error Success)
+editPaste id body private language auth =
+  liftM decodePaste $ refheapReq methodPost ("/paste/" ++ id) (Just $ composeAuth auth) form
+  where form = Just [("contents", body)
+                    ,("private", show private)
+                    ,("language", language)]
