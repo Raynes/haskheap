@@ -6,6 +6,8 @@ module Network.Haskheap
        , createPaste
        , deletePaste
        , forkPaste
+       , editPaste
+       , getHighlightedPaste
        )
 where
 
