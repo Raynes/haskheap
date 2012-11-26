@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                haskheap
-version:             0.1.0
+version:             0.1.1
 synopsis:            Haskell bindings to refheap.
 -- description:         
 homepage:            https://github.com/Raynes/haskheap
