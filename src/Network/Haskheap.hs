@@ -20,6 +20,8 @@ import Network.HTTP.Conduit (parseUrl, urlEncodedBody, Response(..), Request(..)
 import Network.HTTP.Types   (renderSimpleQuery, SimpleQuery, Method, methodGet, methodPost, methodDelete)
 import Network              (withSocketsDo)
 import Control.Arrow        ((***))
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Text as T
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as SB
 
@@ -54,6 +56,7 @@ data Success = Paste { getLines    :: Integer       -- ^ Lines in the paste.
                      , getUser     :: Maybe String  -- ^ User who created the paste. Nothing indicates anonymous.
                      , getBody     :: Contents      -- ^ Body of the paste.
                      }
+             | Line String -- ^ A string was returned by the API that can't be represented as a paste.
              | Empty -- ^ Operation was successful, but response is empty.
              deriving (Show)
 
@@ -99,6 +102,10 @@ refheapReq method path query body = do
           Nothing -> req'
     responseBody <$> withManager (httpLbs req'')
 
+toList :: Maybe Value -> Maybe [(T.Text, Value)]
+toList (Just (Object hm)) = Just $ HM.toList hm
+toList Nothing            = Nothing
+
 -- | Decode a paste to either a Maybe Error or a Paste. It works by first
 -- trying to decode the JSON as a Paste and if that fails, it tries to decode
 -- it as an Error.
@@ -108,7 +115,9 @@ decodePaste s =
     (Just x) -> Right x
     Nothing  -> case decode s of
       (Just x) -> Left x
-      Nothing  -> Right Empty
+      Nothing  -> case toList (decode s :: Maybe Value) of
+        Just [("content", String x)] -> Right $ Line $ T.unpack x
+        _                            -> Right Empty
 
 -- | Get a paste from refheap. Will return IO Nothing if the paste doesn't exist.
 getPaste :: PasteID -> IO (Either Error Success)
@@ -143,3 +152,8 @@ editPaste id body private language auth =
   where form = Just [("contents", body)
                     ,("private", show private)
                     ,("language", language)]
+
+-- | Get the highlighted body of a paste. This does not include theme css, just raw HTML.
+getHighlightedPaste :: PasteID -> IO (Either Error Success)
+getHighlightedPaste id =
+  liftM decodePaste $ refheapReq methodGet ("/paste/" ++ id ++ "/highlight") Nothing Nothing
